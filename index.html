@@ -1,53 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Musify</title>
-
-  <link rel="manifest" href="/Musify/manifest.json">
-  <link rel="stylesheet" href="/Musify/styles.css">
-
-  <meta name="theme-color" content="#0affff">
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-  <div id="app">
-    <header>
-      <h1>Musify</h1>
-      <button id="importBtn">Import MusicVault.zip</button>
-    </header>
 
-    <main>
+  <!-- Drag & Drop Overlay -->
+  <div id="dropZone">Drop ZIP Here</div>
 
-      <!-- Albums Tab -->
-      <section id="albumsTab">
-        <h2>Albums</h2>
-        <div id="albumGrid"></div>
-      </section>
-
-      <!-- Album View Tab -->
-      <section id="albumViewTab" style="display:none;">
-        <button id="backToAlbumsBtn">← Back to Albums</button>
-        <h2 id="albumViewTitle"></h2>
-        <ul id="albumViewTrackList"></ul>
-      </section>
-
-      <!-- Now Playing -->
-      <section id="nowPlayingSection">
-        <h2>Now Playing</h2>
-        <div id="nowPlaying">
-          <div id="nowPlayingTitle">Nothing playing</div>
-          <div id="nowPlayingAlbum"></div>
-          <button id="playPauseBtn" disabled>Play</button>
-        </div>
-      </section>
-
-    </main>
+  <!-- Albums Tab -->
+  <div id="albumsTab">
+    <h1>Albums</h1>
+    <div id="albumGrid"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-  <script src="/Musify/app.js"></script>
+  <!-- Album View -->
+  <div id="albumViewTab" style="display:none;">
+    <button id="backToAlbumsBtn">Back</button>
+    <h2 id="albumViewTitle"></h2>
+    <ul id="albumViewTrackList"></ul>
+  </div>
+
+  <!-- Now Playing Bar -->
+  <div id="nowPlayingBar">
+    <div id="nowPlayingTitle">No Track</div>
+    <div id="nowPlayingAlbum"></div>
+    <button id="playPauseBtn" disabled>Play</button>
+  </div>
+
+  <script src="jszip.min.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
