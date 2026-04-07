@@ -45,11 +45,6 @@ main {
   gap: 16px;
 }
 
-#albumSection h2,
-#nowPlayingSection h2 {
-  margin-top: 0;
-}
-
 #albumGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -81,11 +76,12 @@ main {
   opacity: 0.8;
 }
 
-.track-list {
+.track-list,
+#albumViewTrackList {
   margin-top: 8px;
   padding-left: 16px;
   font-size: 0.85rem;
-  max-height: 120px;
+  max-height: 200px;
   overflow-y: auto;
 }
 
