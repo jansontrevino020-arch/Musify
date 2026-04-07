@@ -76,11 +76,13 @@ function showAlbumViewTab() {
 
 backToAlbumsBtn.addEventListener("click", showAlbumsTab);
 
-// --- Audio engine ---
+// --- Audio engine + queue ---
 const audio = new Audio();
-let currentAlbumTracks = [];
-let currentTrackIndex = -1;
 let currentObjectUrl = null;
+
+// Queue system
+let playQueue = [];
+let queueIndex = -1;
 
 // Play/pause button
 playPauseBtn.addEventListener("click", () => {
@@ -93,12 +95,12 @@ playPauseBtn.addEventListener("click", () => {
   }
 });
 
-// --- AUTO-NEXT TRACK (FINAL WORKING VERSION) ---
+// Auto-next using queue
 audio.addEventListener("ended", () => {
-  const nextIndex = currentTrackIndex + 1;
+  const nextIndex = queueIndex + 1;
 
-  if (nextIndex < currentAlbumTracks.length) {
-    playTrackAtIndex(nextIndex);
+  if (nextIndex < playQueue.length) {
+    playFromQueue(nextIndex);
   } else {
     playPauseBtn.textContent = "Play";
   }
@@ -143,13 +145,10 @@ function renderLibrary(tracks) {
   });
 }
 
-// --- Album view ---
+// --- Album view (loads queue) ---
 function openAlbumView(albumName, tracks) {
   albumViewTitle.textContent = albumName;
   albumViewTrackList.innerHTML = "";
-
-  currentAlbumTracks = tracks;
-  currentTrackIndex = -1;
 
   tracks.forEach((track, index) => {
     const li = document.createElement("li");
@@ -157,7 +156,10 @@ function openAlbumView(albumName, tracks) {
     li.textContent = track.name;
 
     li.addEventListener("click", () => {
-      playTrackAtIndex(index);
+      // Whole album becomes queue, start at clicked track
+      playQueue = [...tracks];
+      queueIndex = index;
+      playFromQueue(queueIndex);
     });
 
     albumViewTrackList.appendChild(li);
@@ -166,10 +168,12 @@ function openAlbumView(albumName, tracks) {
   showAlbumViewTab();
 }
 
-// --- PLAY TRACK BY INDEX (REQUIRED FOR AUTO-NEXT) ---
-async function playTrackAtIndex(index) {
-  currentTrackIndex = index;
-  const track = currentAlbumTracks[index];
+// --- Queue playback core ---
+async function playFromQueue(index) {
+  if (index < 0 || index >= playQueue.length) return;
+
+  queueIndex = index;
+  const track = playQueue[index];
 
   if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
 
