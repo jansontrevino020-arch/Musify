@@ -81,7 +81,7 @@ const audio = new Audio();
 let currentTrack = null;
 let currentObjectUrl = null;
 
-// NEW: album playback state
+// Album playback state
 let currentAlbumTracks = [];
 let currentTrackIndex = -1;
 
@@ -96,14 +96,12 @@ playPauseBtn.addEventListener("click", () => {
   }
 });
 
-// --- AUTO-NEXT-TRACK ---
+// AUTO-NEXT: always use index
 audio.addEventListener("ended", () => {
   if (currentAlbumTracks.length > 0 && currentTrackIndex >= 0) {
     const nextIndex = currentTrackIndex + 1;
-
     if (nextIndex < currentAlbumTracks.length) {
-      currentTrackIndex = nextIndex;
-      playTrack(currentAlbumTracks[nextIndex]);
+      playTrackAtIndex(nextIndex);
     } else {
       playPauseBtn.textContent = "Play";
     }
@@ -155,7 +153,6 @@ function openAlbumView(albumName, tracks) {
   albumViewTitle.textContent = albumName;
   albumViewTrackList.innerHTML = "";
 
-  // Save album track order
   currentAlbumTracks = tracks;
   currentTrackIndex = -1;
 
@@ -165,8 +162,7 @@ function openAlbumView(albumName, tracks) {
     li.textContent = track.name;
 
     li.addEventListener("click", () => {
-      currentTrackIndex = index;
-      playTrack(track);
+      playTrackAtIndex(index);
     });
 
     albumViewTrackList.appendChild(li);
@@ -175,12 +171,13 @@ function openAlbumView(albumName, tracks) {
   showAlbumViewTab();
 }
 
-// --- Play a track ---
-async function playTrack(track) {
-  // NEW: ensure index is always correct
-  if (currentAlbumTracks.length > 0) {
-    currentTrackIndex = currentAlbumTracks.indexOf(track);
-  }
+// --- Play by index (core for auto-next) ---
+async function playTrackAtIndex(index) {
+  if (index < 0 || index >= currentAlbumTracks.length) return;
+
+  currentTrackIndex = index;
+  const track = currentAlbumTracks[index];
+  currentTrack = track;
 
   if (currentObjectUrl) {
     URL.revokeObjectURL(currentObjectUrl);
@@ -190,7 +187,6 @@ async function playTrack(track) {
   const blob = track.blob;
   const url = URL.createObjectURL(blob);
   currentObjectUrl = url;
-  currentTrack = track;
 
   audio.src = url;
   await audio.play();
@@ -220,7 +216,6 @@ importBtn.addEventListener("click", async () => {
     const zip = await JSZip.loadAsync(zipFile);
 
     const audioExtensions = [".mp3", ".wav", ".ogg", ".flac", ".m4a"];
-    const newTracks = [];
 
     for (const path in zip.files) {
       const entry = zip.files[path];
@@ -244,7 +239,6 @@ importBtn.addEventListener("click", async () => {
 
       const id = await addTrack(trackObj);
       trackObj.id = id;
-      newTracks.push(trackObj);
     }
 
     const allTracks = await getAllTracks();
