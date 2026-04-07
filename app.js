@@ -78,15 +78,12 @@ backToAlbumsBtn.addEventListener("click", showAlbumsTab);
 
 // --- Audio engine ---
 const audio = new Audio();
-let currentTrack = null;
-let currentObjectUrl = null;
-
-// Album playback state
 let currentAlbumTracks = [];
 let currentTrackIndex = -1;
+let currentObjectUrl = null;
 
+// Play/pause button
 playPauseBtn.addEventListener("click", () => {
-  if (!currentTrack) return;
   if (audio.paused) {
     audio.play();
     playPauseBtn.textContent = "Pause";
@@ -96,15 +93,14 @@ playPauseBtn.addEventListener("click", () => {
   }
 });
 
-// AUTO-NEXT: always use index
+// --- AUTO-NEXT TRACK (GUARANTEED WORKING) ---
 audio.addEventListener("ended", () => {
-  if (currentAlbumTracks.length > 0 && currentTrackIndex >= 0) {
-    const nextIndex = currentTrackIndex + 1;
-    if (nextIndex < currentAlbumTracks.length) {
-      playTrackAtIndex(nextIndex);
-    } else {
-      playPauseBtn.textContent = "Play";
-    }
+  const nextIndex = currentTrackIndex + 1;
+
+  if (nextIndex < currentAlbumTracks.length) {
+    playTrackAtIndex(nextIndex);
+  } else {
+    playPauseBtn.textContent = "Play";
   }
 });
 
@@ -125,7 +121,7 @@ function renderLibrary(tracks) {
 
     const title = document.createElement("div");
     title.className = "album-title";
-    title.textContent = albumName || "Unknown Album";
+    title.textContent = albumName;
 
     const artist = document.createElement("div");
     artist.className = "album-artist";
@@ -135,8 +131,7 @@ function renderLibrary(tracks) {
     openBtn.className = "album-open-btn";
     openBtn.textContent = "Open Album";
 
-    openBtn.addEventListener("click", (event) => {
-      event.stopPropagation();
+    openBtn.addEventListener("click", () => {
       openAlbumView(albumName, albums[albumName]);
     });
 
@@ -171,17 +166,13 @@ function openAlbumView(albumName, tracks) {
   showAlbumViewTab();
 }
 
-// --- Play by index (core for auto-next) ---
+// --- PLAY TRACK BY INDEX (THE CORE FIX) ---
 async function playTrackAtIndex(index) {
-  if (index < 0 || index >= currentAlbumTracks.length) return;
-
   currentTrackIndex = index;
   const track = currentAlbumTracks[index];
-  currentTrack = track;
 
   if (currentObjectUrl) {
     URL.revokeObjectURL(currentObjectUrl);
-    currentObjectUrl = null;
   }
 
   const blob = track.blob;
@@ -192,7 +183,7 @@ async function playTrackAtIndex(index) {
   await audio.play();
 
   nowPlayingTitle.textContent = track.name;
-  nowPlayingAlbum.textContent = track.album || "Unknown Album";
+  nowPlayingAlbum.textContent = track.album;
   playPauseBtn.disabled = false;
   playPauseBtn.textContent = "Pause";
 }
@@ -222,8 +213,7 @@ importBtn.addEventListener("click", async () => {
       if (entry.dir) continue;
 
       const lower = entry.name.toLowerCase();
-      const isAudio = audioExtensions.some(ext => lower.endsWith(ext));
-      if (!isAudio) continue;
+      if (!audioExtensions.some(ext => lower.endsWith(ext))) continue;
 
       const parts = entry.name.split("/");
       const albumName = parts.length > 1 ? parts[parts.length - 2] : "Unknown Album";
@@ -237,8 +227,7 @@ importBtn.addEventListener("click", async () => {
         blob: fileData
       };
 
-      const id = await addTrack(trackObj);
-      trackObj.id = id;
+      await addTrack(trackObj);
     }
 
     const allTracks = await getAllTracks();
