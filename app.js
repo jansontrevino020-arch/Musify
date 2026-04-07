@@ -177,6 +177,11 @@ function openAlbumView(albumName, tracks) {
 
 // --- Play a track ---
 async function playTrack(track) {
+  // NEW: ensure index is always correct
+  if (currentAlbumTracks.length > 0) {
+    currentTrackIndex = currentAlbumTracks.indexOf(track);
+  }
+
   if (currentObjectUrl) {
     URL.revokeObjectURL(currentObjectUrl);
     currentObjectUrl = null;
