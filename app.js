@@ -50,7 +50,6 @@ function getAllTracks() {
 }
 
 // --- UI elements ---
-const importBtn = document.getElementById("importBtn");
 const albumGrid = document.getElementById("albumGrid");
 const nowPlayingTitle = document.getElementById("nowPlayingTitle");
 const nowPlayingAlbum = document.getElementById("nowPlayingAlbum");
@@ -192,53 +191,61 @@ async function playFromQueue(index) {
   });
 }
 
-// --- ZIP import ---
-importBtn.addEventListener("click", async () => {
-  try {
-    const fileHandles = await window.showOpenFilePicker({
-      multiple: false,
-      types: [
-        {
-          description: "ZIP File",
-          accept: { "application/zip": [".zip"] }
-        }
-      ]
-    });
+// --- DRAG AND DROP ZIP IMPORT ---
+const dropZone = document.getElementById("dropZone");
 
-    const zipHandle = fileHandles[0];
-    const zipFile = await zipHandle.getFile();
+window.addEventListener("dragenter", (e) => {
+  e.preventDefault();
+  dropZone.style.display = "flex";
+});
 
-    const zip = await JSZip.loadAsync(zipFile);
+window.addEventListener("dragover", (e) => {
+  e.preventDefault();
+});
 
-    const audioExtensions = [".mp3", ".wav", ".ogg", ".flac", ".m4a"];
-
-    for (const path in zip.files) {
-      const entry = zip.files[path];
-      if (entry.dir) continue;
-
-      const lower = entry.name.toLowerCase();
-      if (!audioExtensions.some(ext => lower.endsWith(ext))) continue;
-
-      const parts = entry.name.split("/");
-      const albumName = parts.length > 1 ? parts[parts.length - 2] : "Unknown Album";
-      const trackName = parts[parts.length - 1];
-
-      const fileData = await entry.async("blob");
-
-      const trackObj = {
-        name: trackName,
-        album: albumName,
-        blob: fileData
-      };
-
-      await addTrack(trackObj);
-    }
-
-    const allTracks = await getAllTracks();
-    renderLibrary(allTracks);
-  } catch (err) {
-    console.error("ZIP import failed:", err);
+window.addEventListener("dragleave", (e) => {
+  if (e.target === document.body) {
+    dropZone.style.display = "none";
   }
+});
+
+window.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  dropZone.style.display = "none";
+
+  const file = e.dataTransfer.files[0];
+  if (!file || !file.name.toLowerCase().endsWith(".zip")) {
+    alert("Please drop a ZIP file.");
+    return;
+  }
+
+  const zip = await JSZip.loadAsync(file);
+  const audioExtensions = [".mp3", ".wav", ".ogg", ".flac", ".m4a"];
+
+  for (const path in zip.files) {
+    const entry = zip.files[path];
+    if (entry.dir) continue;
+
+    const lower = entry.name.toLowerCase();
+    if (!audioExtensions.some(ext => lower.endsWith(ext))) continue;
+
+    const parts = entry.name.split("/");
+    const albumName = parts.length > 1 ? parts[parts.length - 2] : "Unknown Album";
+    const trackName = parts[parts.length - 1];
+
+    const fileData = await entry.async("blob");
+
+    const trackObj = {
+      name: trackName,
+      album: albumName,
+      blob: fileData
+    };
+
+    await addTrack(trackObj);
+  }
+
+  const allTracks = await getAllTracks();
+  renderLibrary(allTracks);
 });
 
 // --- Init ---
