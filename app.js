@@ -56,6 +56,26 @@ const nowPlayingTitle = document.getElementById("nowPlayingTitle");
 const nowPlayingAlbum = document.getElementById("nowPlayingAlbum");
 const playPauseBtn = document.getElementById("playPauseBtn");
 
+// Tabs
+const albumsTab = document.getElementById("albumsTab");
+const albumViewTab = document.getElementById("albumViewTab");
+const backToAlbumsBtn = document.getElementById("backToAlbumsBtn");
+const albumViewTitle = document.getElementById("albumViewTitle");
+const albumViewTrackList = document.getElementById("albumViewTrackList");
+
+// --- Tab switching ---
+function showAlbumsTab() {
+  albumsTab.style.display = "block";
+  albumViewTab.style.display = "none";
+}
+
+function showAlbumViewTab() {
+  albumsTab.style.display = "none";
+  albumViewTab.style.display = "block";
+}
+
+backToAlbumsBtn.addEventListener("click", showAlbumsTab);
+
 // --- Audio engine ---
 const audio = new Audio();
 let currentTrack = null;
@@ -99,22 +119,33 @@ function renderLibrary(tracks) {
     artist.className = "album-artist";
     artist.textContent = "Local Files";
 
-    const trackList = document.createElement("ul");
-    trackList.className = "track-list";
-
-    albums[albumName].forEach(track => {
-      const li = document.createElement("li");
-      li.className = "track-item";
-      li.textContent = track.name;
-      li.addEventListener("click", () => playTrack(track));
-      trackList.appendChild(li);
-    });
-
     card.appendChild(title);
     card.appendChild(artist);
-    card.appendChild(trackList);
+
+    card.addEventListener("click", () => {
+      openAlbumView(albumName, albums[albumName]);
+    });
+
     albumGrid.appendChild(card);
   });
+}
+
+// --- Album view ---
+function openAlbumView(albumName, tracks) {
+  albumViewTitle.textContent = albumName;
+  albumViewTrackList.innerHTML = "";
+
+  tracks.forEach(track => {
+    const li = document.createElement("li");
+    li.className = "track-item";
+    li.textContent = track.name;
+
+    li.addEventListener("click", () => playTrack(track));
+
+    albumViewTrackList.appendChild(li);
+  });
+
+  showAlbumViewTab();
 }
 
 // --- Play a track ---
