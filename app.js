@@ -119,12 +119,18 @@ function renderLibrary(tracks) {
     artist.className = "album-artist";
     artist.textContent = "Local Files";
 
-    card.appendChild(title);
-    card.appendChild(artist);
+    const openBtn = document.createElement("button");
+    openBtn.className = "album-open-btn";
+    openBtn.textContent = "Open Album";
 
-    card.addEventListener("click", () => {
+    openBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
       openAlbumView(albumName, albums[albumName]);
     });
+
+    card.appendChild(title);
+    card.appendChild(artist);
+    card.appendChild(openBtn);
 
     albumGrid.appendChild(card);
   });
