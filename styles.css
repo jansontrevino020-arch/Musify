@@ -1,117 +1,103 @@
-* {
-  box-sizing: border-box;
-}
-
 body {
   margin: 0;
-  background: #050510;
-  color: #e0ffff;
-  font-family: system-ui, sans-serif;
+  background: #111;
+  color: white;
+  font-family: Arial, sans-serif;
 }
 
-#app {
-  padding: 16px;
-}
-
-header {
-  display: flex;
-  justify-content: space-between;
+/* Drag & Drop Overlay */
+#dropZone {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.7);
+  color: #0affff;
+  font-size: 32px;
+  display: none;
   align-items: center;
-  margin-bottom: 16px;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: none;
 }
 
-h1 {
-  margin: 0;
-}
-
-button {
-  background: #0affff;
-  color: #000;
-  border: none;
-  padding: 8px 16px;
-  cursor: pointer;
-  font-weight: bold;
-  border-radius: 4px;
-}
-
-button:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-main {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 16px;
-}
-
+/* Album Grid */
 #albumGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  padding: 20px;
 }
 
 .album-card {
-  background: #111827;
+  background: #222;
+  padding: 16px;
   border-radius: 8px;
-  padding: 8px;
-  border: 1px solid #0affff33;
+  text-align: center;
+  border: 1px solid #333;
 }
 
 .album-title {
-  font-weight: bold;
-  margin-bottom: 4px;
+  font-size: 18px;
+  margin-bottom: 6px;
 }
 
 .album-artist {
-  font-size: 0.85rem;
-  opacity: 0.8;
+  font-size: 14px;
+  opacity: 0.7;
+  margin-bottom: 10px;
 }
 
 .album-open-btn {
-  margin-top: 8px;
-  width: 100%;
+  padding: 8px 12px;
   background: #0affff;
-  color: #000;
   border: none;
-  padding: 6px;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-weight: bold;
 }
 
-.album-open-btn:hover {
-  background: #7fffff;
+/* Album View */
+#albumViewTab {
+  padding: 20px;
+}
+
+#albumViewTrackList {
+  list-style: none;
+  padding: 0;
 }
 
 .track-item {
+  padding: 12px;
+  background: #222;
+  margin-bottom: 8px;
+  border-radius: 6px;
   cursor: pointer;
+  border: 1px solid #333;
 }
 
 .track-item:hover {
-  text-decoration: underline;
+  background: #333;
 }
 
-#nowPlaying {
-  background: #111827;
-  border-radius: 8px;
+/* Now Playing Bar */
+#nowPlayingBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #000;
   padding: 12px;
-  border: 1px solid #0affff33;
+  border-top: 1px solid #333;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-#nowPlayingTitle {
-  font-weight: bold;
-  margin-bottom: 4px;
-}
-
-#nowPlayingAlbum {
-  font-size: 0.9rem;
-  opacity: 0.8;
-  margin-bottom: 8px;
-}
-
-@media (max-width: 800px) {
-  main {
-    grid-template-columns: 1fr;
-  }
+#playPauseBtn {
+  padding: 8px 16px;
+  background: #0affff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
 }
