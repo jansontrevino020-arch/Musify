@@ -34,8 +34,9 @@ function addTrack(track) {
     const tx = db.transaction("tracks", "readwrite");
     const store = tx.objectStore("tracks");
     const req = store.add(track);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+
+    tx.oncomplete = () => resolve(req.result);
+    tx.onerror = () => reject(tx.error);
   });
 }
 
@@ -44,6 +45,7 @@ function getAllTracks() {
     const tx = db.transaction("tracks", "readonly");
     const store = tx.objectStore("tracks");
     const req = store.getAll();
+
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -82,7 +84,7 @@ let currentAlbumTracks = [];
 let currentTrackIndex = -1;
 let currentObjectUrl = null;
 
-// Play/pause button
+// --- Play/pause ---
 playPauseBtn.addEventListener("click", () => {
   if (audio.paused) {
     audio.play();
@@ -93,31 +95,38 @@ playPauseBtn.addEventListener("click", () => {
   }
 });
 
-// --- AUTO-NEXT TRACK (FINAL FIX) ---
-audio.addEventListener("ended", () => {
+// --- ✅ PLAY TRACK BY INDEX (CORE FUNCTION) ---
+async function playTrackAtIndex(index) {
+  currentTrackIndex = index;
+  const track = currentAlbumTracks[index];
+
+  if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+
+  const url = URL.createObjectURL(track.blob);
+  currentObjectUrl = url;
+
+  audio.src = url;
+  audio.currentTime = 0;
+
+  await audio.play();
+
+  nowPlayingTitle.textContent = track.name;
+  nowPlayingAlbum.textContent = track.album;
+  playPauseBtn.disabled = false;
+  playPauseBtn.textContent = "Pause";
+}
+
+// --- ✅ AUTO-NEXT (FIXED) ---
+audio.addEventListener("ended", async () => {
   const nextIndex = currentTrackIndex + 1;
 
   if (nextIndex < currentAlbumTracks.length) {
-    currentTrackIndex = nextIndex;
-    const track = currentAlbumTracks[nextIndex];
-
-    // Create URL for next track
-    if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
-    const url = URL.createObjectURL(track.blob);
-    currentObjectUrl = url;
-
-    audio.src = url;
-
-    // Browser-safe continuation
-    audio.play().then(() => {
-      nowPlayingTitle.textContent = track.name;
-      nowPlayingAlbum.textContent = track.album;
-      playPauseBtn.textContent = "Pause";
-    }).catch(err => {
-      console.log("Autoplay blocked:", err);
+    try {
+      await playTrackAtIndex(nextIndex);
+    } catch (err) {
+      console.log("Auto-next failed:", err);
       playPauseBtn.textContent = "Play";
-    });
-
+    }
   } else {
     playPauseBtn.textContent = "Play";
   }
@@ -134,32 +143,34 @@ function renderLibrary(tracks) {
 
   albumGrid.innerHTML = "";
 
-  Object.keys(albums).forEach(albumName => {
-    const card = document.createElement("div");
-    card.className = "album-card";
+  Object.keys(albums)
+    .sort((a, b) => a.localeCompare(b))
+    .forEach(albumName => {
+      const card = document.createElement("div");
+      card.className = "album-card";
 
-    const title = document.createElement("div");
-    title.className = "album-title";
-    title.textContent = albumName;
+      const title = document.createElement("div");
+      title.className = "album-title";
+      title.textContent = albumName;
 
-    const artist = document.createElement("div");
-    artist.className = "album-artist";
-    artist.textContent = "Local Files";
+      const artist = document.createElement("div");
+      artist.className = "album-artist";
+      artist.textContent = "Local Files";
 
-    const openBtn = document.createElement("button");
-    openBtn.className = "album-open-btn";
-    openBtn.textContent = "Open Album";
+      const openBtn = document.createElement("button");
+      openBtn.className = "album-open-btn";
+      openBtn.textContent = "Open Album";
 
-    openBtn.addEventListener("click", () => {
-      openAlbumView(albumName, albums[albumName]);
+      openBtn.addEventListener("click", () => {
+        openAlbumView(albumName, albums[albumName]);
+      });
+
+      card.appendChild(title);
+      card.appendChild(artist);
+      card.appendChild(openBtn);
+
+      albumGrid.appendChild(card);
     });
-
-    card.appendChild(title);
-    card.appendChild(artist);
-    card.appendChild(openBtn);
-
-    albumGrid.appendChild(card);
-  });
 }
 
 // --- Album view ---
@@ -183,25 +194,6 @@ function openAlbumView(albumName, tracks) {
   });
 
   showAlbumViewTab();
-}
-
-// --- PLAY TRACK BY INDEX ---
-async function playTrackAtIndex(index) {
-  currentTrackIndex = index;
-  const track = currentAlbumTracks[index];
-
-  if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
-
-  const url = URL.createObjectURL(track.blob);
-  currentObjectUrl = url;
-
-  audio.src = url;
-  await audio.play();
-
-  nowPlayingTitle.textContent = track.name;
-  nowPlayingAlbum.textContent = track.album;
-  playPauseBtn.disabled = false;
-  playPauseBtn.textContent = "Pause";
 }
 
 // --- ZIP import ---
@@ -248,8 +240,10 @@ importBtn.addEventListener("click", async () => {
 
     const allTracks = await getAllTracks();
     renderLibrary(allTracks);
+
   } catch (err) {
     console.error("ZIP import failed:", err);
+    alert("Import failed. Try another ZIP.");
   }
 });
 
