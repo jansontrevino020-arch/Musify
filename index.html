@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Musify</title>
+
+  <!-- GitHub Pages paths -->
+  <link rel="manifest" href="/Musify/manifest.json">
+  <link rel="stylesheet" href="/Musify/styles.css">
+
+  <meta name="theme-color" content="#0affff">
+</head>
+
+<body>
+  <div id="app">
+    <header>
+      <h1>Musify</h1>
+      <button id="importBtn">Import MusicVault.zip</button>
+    </header>
+
+    <main>
+      <section id="albumSection">
+        <h2>Albums</h2>
+        <div id="albumGrid"></div>
+      </section>
+
+      <section id="nowPlayingSection">
+        <h2>Now Playing</h2>
+        <div id="nowPlaying">
+          <div id="nowPlayingTitle">Nothing playing</div>
+          <div id="nowPlayingAlbum"></div>
+          <button id="playPauseBtn" disabled>Play</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- JSZip from CDN (needs network once, then cached) -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="/Musify/app.js"></script>
+</body>
+</html>

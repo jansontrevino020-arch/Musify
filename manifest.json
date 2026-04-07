@@ -1,0 +1,9 @@
+{
+  "name": "Musify",
+  "short_name": "Musify",
+  "start_url": "/Musify/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#0affff",
+  "icons": []
+}
