@@ -81,6 +81,10 @@ const audio = new Audio();
 let currentTrack = null;
 let currentObjectUrl = null;
 
+// NEW: album playback state
+let currentAlbumTracks = [];
+let currentTrackIndex = -1;
+
 playPauseBtn.addEventListener("click", () => {
   if (!currentTrack) return;
   if (audio.paused) {
@@ -92,8 +96,18 @@ playPauseBtn.addEventListener("click", () => {
   }
 });
 
+// --- AUTO-NEXT-TRACK ---
 audio.addEventListener("ended", () => {
-  playPauseBtn.textContent = "Play";
+  if (currentAlbumTracks.length > 0 && currentTrackIndex >= 0) {
+    const nextIndex = currentTrackIndex + 1;
+
+    if (nextIndex < currentAlbumTracks.length) {
+      currentTrackIndex = nextIndex;
+      playTrack(currentAlbumTracks[nextIndex]);
+    } else {
+      playPauseBtn.textContent = "Play";
+    }
+  }
 });
 
 // --- Render library ---
@@ -141,12 +155,19 @@ function openAlbumView(albumName, tracks) {
   albumViewTitle.textContent = albumName;
   albumViewTrackList.innerHTML = "";
 
-  tracks.forEach(track => {
+  // Save album track order
+  currentAlbumTracks = tracks;
+  currentTrackIndex = -1;
+
+  tracks.forEach((track, index) => {
     const li = document.createElement("li");
     li.className = "track-item";
     li.textContent = track.name;
 
-    li.addEventListener("click", () => playTrack(track));
+    li.addEventListener("click", () => {
+      currentTrackIndex = index;
+      playTrack(track);
+    });
 
     albumViewTrackList.appendChild(li);
   });
