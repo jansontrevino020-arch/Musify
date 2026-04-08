@@ -12,7 +12,7 @@ if ("serviceWorker" in navigator) {
 
 // IndexedDB
 const DB_NAME = "musify-db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let db;
 
 function openDB() {
@@ -21,9 +21,14 @@ function openDB() {
 
     req.onupgradeneeded = event => {
       const db = event.target.result;
+
       if (!db.objectStoreNames.contains("tracks")) {
         const store = db.createObjectStore("tracks", { keyPath: "id", autoIncrement: true });
         store.createIndex("album", "album", { unique: false });
+      }
+
+      if (!db.objectStoreNames.contains("covers")) {
+        db.createObjectStore("covers", { keyPath: "album" });
       }
     };
 
@@ -56,10 +61,32 @@ function getAllTracks() {
   });
 }
 
+// Cover storage
+function saveCover(album, blob) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("covers", "readwrite");
+    const store = tx.objectStore("covers");
+    const req = store.put({ album, blob });
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function getCover(album) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("covers", "readonly");
+    const store = tx.objectStore("covers");
+    const req = store.get(album);
+    req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
 // UI
 const albumGrid = document.getElementById("albumGrid");
 const nowPlayingTitle = document.getElementById("nowPlayingTitle");
 const nowPlayingAlbum = document.getElementById("nowPlayingAlbum");
+const nowPlayingCover = document.getElementById("nowPlayingCover");
 const playPauseBtn = document.getElementById("playPauseBtn");
 
 const albumsTab = document.getElementById("albumsTab");
@@ -120,6 +147,15 @@ function renderLibrary(tracks) {
     const card = document.createElement("div");
     card.className = "album-card";
 
+    const coverImg = document.createElement("img");
+    coverImg.className = "album-cover";
+
+    getCover(albumName).then(blob => {
+      if (blob) {
+        coverImg.src = URL.createObjectURL(blob);
+      }
+    });
+
     const title = document.createElement("div");
     title.className = "album-title";
     title.textContent = albumName;
@@ -136,6 +172,7 @@ function renderLibrary(tracks) {
       openAlbumView(albumName, albums[albumName]);
     });
 
+    card.appendChild(coverImg);
     card.appendChild(title);
     card.appendChild(artist);
     card.appendChild(openBtn);
@@ -179,6 +216,13 @@ async function playFromQueue(index) {
   currentObjectUrl = url;
 
   audio.src = url;
+
+  const coverBlob = await getCover(track.album);
+  if (coverBlob) {
+    nowPlayingCover.src = URL.createObjectURL(coverBlob);
+  } else {
+    nowPlayingCover.src = "";
+  }
 
   audio.play().then(() => {
     nowPlayingTitle.textContent = track.name;
@@ -224,6 +268,22 @@ window.addEventListener("drop", async e => {
     if (entry.dir) continue;
 
     const lower = entry.name.toLowerCase();
+
+    // Cover detection
+    if (
+      lower.endsWith("cover.jpg") ||
+      lower.endsWith("cover.png") ||
+      lower.endsWith("cover.webp")
+    ) {
+      const parts = entry.name.split("/");
+      const albumName = parts.length > 1 ? parts[parts.length - 2] : "Unknown Album";
+
+      const coverBlob = await entry.async("blob");
+      await saveCover(albumName, coverBlob);
+      continue;
+    }
+
+    // Audio detection
     if (!audioExtensions.some(ext => lower.endsWith(ext))) continue;
 
     const parts = entry.name.split("/");
