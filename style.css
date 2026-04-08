@@ -8,7 +8,6 @@ body {
   overflow-x: hidden;
 }
 
-/* Drag & Drop Overlay */
 #dropZone {
   position: fixed;
   top: 0;
@@ -25,7 +24,6 @@ body {
   pointer-events: none;
 }
 
-/* Album Grid — AUTO SIZE */
 #albumGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -73,14 +71,12 @@ body {
   cursor: pointer;
 }
 
-/* Album View */
 #albumViewTab {
   padding: 20px;
   width: 100%;
   box-sizing: border-box;
 }
 
-/* Track list */
 .track-item {
   padding: 12px;
   background: #222;
@@ -94,7 +90,6 @@ body {
   background: #333;
 }
 
-/* Now Playing Bar */
 #nowPlayingBar {
   position: fixed;
   bottom: 0;
@@ -117,7 +112,6 @@ body {
   margin-right: 12px;
 }
 
-/* Scroll fix */
 #albumsTab,
 #albumViewTab {
   padding-bottom: 140px;
@@ -125,7 +119,6 @@ body {
   box-sizing: border-box;
 }
 
-/* Mobile optimization */
 @media (max-width: 600px) {
   #albumGrid {
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
