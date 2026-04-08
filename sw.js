@@ -1,4 +1,4 @@
-const CACHE_NAME = "musify-v3";
+const CACHE = "musify-v1";
 
 const ASSETS = [
   "/Musify/",
