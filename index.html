@@ -4,27 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Musify</title>
+
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
+  <meta name="theme-color" content="#000000">
 </head>
 <body>
 
-  <!-- Drag & Drop Overlay -->
   <div id="dropZone">Drop ZIP Here</div>
 
-  <!-- Albums Tab -->
   <div id="albumsTab">
     <h1>Albums</h1>
     <div id="albumGrid"></div>
   </div>
 
-  <!-- Album View -->
   <div id="albumViewTab" style="display:none;">
     <button id="backToAlbumsBtn">Back</button>
     <h2 id="albumViewTitle"></h2>
     <ul id="albumViewTrackList"></ul>
   </div>
 
-  <!-- Now Playing Bar -->
   <div id="nowPlayingBar">
     <div>
       <div id="nowPlayingTitle">No Track</div>
@@ -33,11 +32,7 @@
     <button id="playPauseBtn" disabled>Play</button>
   </div>
 
-  <!-- JSZip Library -->
   <script src="jszip.min.js"></script>
-
-  <!-- Main App Script -->
   <script src="app.js"></script>
-
 </body>
 </html>
