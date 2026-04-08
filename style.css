@@ -3,6 +3,9 @@ body {
   background: #111;
   color: white;
   font-family: Arial, sans-serif;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
 }
 
 /* Drag & Drop Overlay */
@@ -22,12 +25,14 @@ body {
   pointer-events: none;
 }
 
-/* Album Grid */
+/* Album Grid — AUTO SIZE */
 #albumGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 16px;
   padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .album-card {
@@ -36,6 +41,8 @@ body {
   border-radius: 8px;
   text-align: center;
   border: 1px solid #333;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .album-title {
@@ -57,9 +64,11 @@ body {
   cursor: pointer;
 }
 
-/* Album View */
+/* Album View — AUTO SIZE */
 #albumViewTab {
   padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Track list */
@@ -76,7 +85,7 @@ body {
   background: #333;
 }
 
-/* Now Playing Bar */
+/* Now Playing Bar — FIXED */
 #nowPlayingBar {
   position: fixed;
   bottom: 0;
@@ -88,13 +97,26 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
 }
 
-/* ⭐ SCROLL FIX — added exactly as requested */
-#albumsTab {
-  padding-bottom: 120px; /* space for the now playing bar */
-}
-
+/* ⭐ SCROLL FIX + AUTO SIZE */
+#albumsTab,
 #albumViewTab {
-  padding-bottom: 120px; /* space for the now playing bar */
+  padding-bottom: 140px; /* space for the now playing bar */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* MOBILE OPTIMIZATION */
+@media (max-width: 600px) {
+  #albumGrid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  #nowPlayingBar {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
 }
