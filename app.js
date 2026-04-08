@@ -1,16 +1,11 @@
-// Request persistent storage
 if (navigator.storage && navigator.storage.persist) {
-  navigator.storage.persist().then(granted => {
-    console.log(granted ? "Persistent storage granted" : "Persistent storage denied");
-  });
+  navigator.storage.persist();
 }
 
-// Register service worker
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js");
 }
 
-// IndexedDB setup
 const DB_NAME = "musify-db";
 const DB_VERSION = 2;
 let db;
@@ -61,7 +56,6 @@ function getAllTracks() {
   });
 }
 
-// Cover storage
 function saveCover(album, blob) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction("covers", "readwrite");
@@ -82,7 +76,6 @@ function getCover(album) {
   });
 }
 
-// UI elements
 const albumGrid = document.getElementById("albumGrid");
 const nowPlayingTitle = document.getElementById("nowPlayingTitle");
 const nowPlayingAlbum = document.getElementById("nowPlayingAlbum");
@@ -95,7 +88,6 @@ const backToAlbumsBtn = document.getElementById("backToAlbumsBtn");
 const albumViewTitle = document.getElementById("albumViewTitle");
 const albumViewTrackList = document.getElementById("albumViewTrackList");
 
-// Tab switching
 function showAlbumsTab() {
   albumsTab.style.display = "block";
   albumViewTab.style.display = "none";
@@ -111,7 +103,6 @@ backToAlbumsBtn.addEventListener("click", () => {
   window.scrollTo({ top: 0, behavior: "instant" });
 });
 
-// Audio engine + queue
 const audio = new Audio();
 let currentObjectUrl = null;
 
@@ -137,7 +128,6 @@ audio.addEventListener("ended", () => {
   }
 });
 
-// Render library
 function renderLibrary(tracks) {
   const albums = {};
 
@@ -186,7 +176,6 @@ function renderLibrary(tracks) {
   });
 }
 
-// Album view
 function openAlbumView(albumName, tracks) {
   albumViewTitle.textContent = albumName;
   albumViewTrackList.innerHTML = "";
@@ -206,12 +195,9 @@ function openAlbumView(albumName, tracks) {
   });
 
   showAlbumViewTab();
-
-  // Reset scroll to top when opening an album
   window.scrollTo({ top: 0, behavior: "instant" });
 }
 
-// Queue playback
 async function playFromQueue(index) {
   if (index < 0 || index >= playQueue.length) return;
 
@@ -240,7 +226,6 @@ async function playFromQueue(index) {
   });
 }
 
-// Drag & Drop ZIP Import
 const dropZone = document.getElementById("dropZone");
 
 window.addEventListener("dragenter", e => {
@@ -277,7 +262,6 @@ window.addEventListener("drop", async e => {
 
     const lower = entry.name.toLowerCase();
 
-    // Detect cover image
     if (
       lower.endsWith("cover.jpg") ||
       lower.endsWith("cover.png") ||
@@ -291,7 +275,6 @@ window.addEventListener("drop", async e => {
       continue;
     }
 
-    // Detect audio
     if (!audioExtensions.some(ext => lower.endsWith(ext))) continue;
 
     const parts = entry.name.split("/");
@@ -313,7 +296,6 @@ window.addEventListener("drop", async e => {
   renderLibrary(allTracks);
 });
 
-// Init
 (async () => {
   await openDB();
   const tracks = await getAllTracks();
