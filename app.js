@@ -1,9 +1,16 @@
-// --- Service worker registration ---
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("/Musify/sw.js");
+// Persistent storage
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().then(granted => {
+    console.log(granted ? "Persistent storage granted" : "Persistent storage denied");
+  });
 }
 
-// --- IndexedDB setup ---
+// Service worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js");
+}
+
+// IndexedDB
 const DB_NAME = "musify-db";
 const DB_VERSION = 1;
 let db;
@@ -49,20 +56,19 @@ function getAllTracks() {
   });
 }
 
-// --- UI elements ---
+// UI
 const albumGrid = document.getElementById("albumGrid");
 const nowPlayingTitle = document.getElementById("nowPlayingTitle");
 const nowPlayingAlbum = document.getElementById("nowPlayingAlbum");
 const playPauseBtn = document.getElementById("playPauseBtn");
 
-// Tabs
 const albumsTab = document.getElementById("albumsTab");
 const albumViewTab = document.getElementById("albumViewTab");
 const backToAlbumsBtn = document.getElementById("backToAlbumsBtn");
 const albumViewTitle = document.getElementById("albumViewTitle");
 const albumViewTrackList = document.getElementById("albumViewTrackList");
 
-// --- Tab switching ---
+// Tabs
 function showAlbumsTab() {
   albumsTab.style.display = "block";
   albumViewTab.style.display = "none";
@@ -75,15 +81,12 @@ function showAlbumViewTab() {
 
 backToAlbumsBtn.addEventListener("click", showAlbumsTab);
 
-// --- Audio engine + queue ---
+// Audio + queue
 const audio = new Audio();
 let currentObjectUrl = null;
-
-// Queue system
 let playQueue = [];
 let queueIndex = -1;
 
-// Play/pause button
 playPauseBtn.addEventListener("click", () => {
   if (audio.paused) {
     audio.play();
@@ -94,10 +97,8 @@ playPauseBtn.addEventListener("click", () => {
   }
 });
 
-// Auto-next using queue
 audio.addEventListener("ended", () => {
   const nextIndex = queueIndex + 1;
-
   if (nextIndex < playQueue.length) {
     playFromQueue(nextIndex);
   } else {
@@ -105,10 +106,9 @@ audio.addEventListener("ended", () => {
   }
 });
 
-// --- Render library ---
+// Library
 function renderLibrary(tracks) {
   const albums = {};
-
   tracks.forEach(t => {
     if (!albums[t.album]) albums[t.album] = [];
     albums[t.album].push(t);
@@ -144,7 +144,7 @@ function renderLibrary(tracks) {
   });
 }
 
-// --- Album view (loads queue) ---
+// Album view
 function openAlbumView(albumName, tracks) {
   albumViewTitle.textContent = albumName;
   albumViewTrackList.innerHTML = "";
@@ -155,7 +155,6 @@ function openAlbumView(albumName, tracks) {
     li.textContent = track.name;
 
     li.addEventListener("click", () => {
-      // Whole album becomes queue, start at clicked track
       playQueue = [...tracks];
       queueIndex = index;
       playFromQueue(queueIndex);
@@ -167,7 +166,7 @@ function openAlbumView(albumName, tracks) {
   showAlbumViewTab();
 }
 
-// --- Queue playback core ---
+// Queue playback
 async function playFromQueue(index) {
   if (index < 0 || index >= playQueue.length) return;
 
@@ -186,30 +185,28 @@ async function playFromQueue(index) {
     nowPlayingAlbum.textContent = track.album;
     playPauseBtn.disabled = false;
     playPauseBtn.textContent = "Pause";
-  }).catch(err => {
-    console.log("Autoplay blocked:", err);
   });
 }
 
-// --- DRAG AND DROP ZIP IMPORT ---
+// Drag & drop
 const dropZone = document.getElementById("dropZone");
 
-window.addEventListener("dragenter", (e) => {
+window.addEventListener("dragenter", e => {
   e.preventDefault();
   dropZone.style.display = "flex";
 });
 
-window.addEventListener("dragover", (e) => {
+window.addEventListener("dragover", e => {
   e.preventDefault();
 });
 
-window.addEventListener("dragleave", (e) => {
+window.addEventListener("dragleave", e => {
   if (e.target === document.body) {
     dropZone.style.display = "none";
   }
 });
 
-window.addEventListener("drop", async (e) => {
+window.addEventListener("drop", async e => {
   e.preventDefault();
   dropZone.style.display = "none";
 
@@ -248,7 +245,7 @@ window.addEventListener("drop", async (e) => {
   renderLibrary(allTracks);
 });
 
-// --- Init ---
+// Init
 (async () => {
   await openDB();
   const tracks = await getAllTracks();
