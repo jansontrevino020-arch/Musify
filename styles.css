@@ -1,8 +1,14 @@
+/* Global */
 body {
   margin: 0;
   background: #111;
   color: white;
   font-family: Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+h1, h2 {
+  margin: 20px;
 }
 
 /* Drag & Drop Overlay */
@@ -36,6 +42,11 @@ body {
   border-radius: 8px;
   text-align: center;
   border: 1px solid #333;
+  transition: 0.2s;
+}
+
+.album-card:hover {
+  background: #2a2a2a;
 }
 
 .album-title {
@@ -55,6 +66,11 @@ body {
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  font-weight: bold;
+}
+
+.album-open-btn:hover {
+  background: #0cdcdc;
 }
 
 /* Album View */
@@ -65,6 +81,7 @@ body {
 #albumViewTrackList {
   list-style: none;
   padding: 0;
+  margin-top: 20px;
 }
 
 .track-item {
@@ -74,10 +91,26 @@ body {
   border-radius: 6px;
   cursor: pointer;
   border: 1px solid #333;
+  transition: 0.2s;
 }
 
 .track-item:hover {
   background: #333;
+}
+
+/* Back Button */
+#backToAlbumsBtn {
+  padding: 8px 14px;
+  background: #0affff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  font-weight: bold;
+}
+
+#backToAlbumsBtn:hover {
+  background: #0cdcdc;
 }
 
 /* Now Playing Bar */
@@ -87,17 +120,46 @@ body {
   left: 0;
   width: 100%;
   background: #000;
-  padding: 12px;
+  padding: 12px 20px;
   border-top: 1px solid #333;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  box-sizing: border-box;
+}
+
+#nowPlayingTitle {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+#nowPlayingAlbum {
+  font-size: 14px;
+  opacity: 0.7;
 }
 
 #playPauseBtn {
-  padding: 8px 16px;
+  padding: 10px 18px;
   background: #0affff;
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  font-weight: bold;
+}
+
+#playPauseBtn:hover {
+  background: #0cdcdc;
+}
+
+/* Mobile Tweaks */
+@media (max-width: 600px) {
+  #albumGrid {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+
+  #nowPlayingBar {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
 }
