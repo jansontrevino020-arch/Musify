@@ -62,6 +62,7 @@ body {
   padding: 20px;
 }
 
+/* Track list */
 .track-item {
   padding: 12px;
   background: #222;
@@ -87,4 +88,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+/* ⭐ SCROLL FIX — added exactly as requested */
+#albumsTab {
+  padding-bottom: 120px; /* space for the now playing bar */
+}
+
+#albumViewTab {
+  padding-bottom: 120px; /* space for the now playing bar */
 }
