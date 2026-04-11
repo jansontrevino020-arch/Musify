@@ -136,6 +136,13 @@ function renderLibrary(tracks) {
     albums[t.album].push(t);
   });
 
+  // ⭐ Sort tracks inside each album globally
+  Object.keys(albums).forEach(albumName => {
+    albums[albumName].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true })
+    );
+  });
+
   albumGrid.innerHTML = "";
 
   Object.keys(albums).forEach(albumName => {
@@ -176,9 +183,12 @@ function renderLibrary(tracks) {
   });
 }
 
-function openAlbumView(albumName, tracks) {
+async function openAlbumView(albumName, tracks) {
   albumViewTitle.textContent = albumName;
   albumViewTrackList.innerHTML = "";
+
+  // ⭐ Sort tracks by filename (01, 02, 03...)
+  tracks.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
   tracks.forEach((track, index) => {
     const li = document.createElement("li");
@@ -186,7 +196,12 @@ function openAlbumView(albumName, tracks) {
     li.textContent = track.name;
 
     li.addEventListener("click", () => {
-      playQueue = [...tracks];
+      // ⭐ Queue also sorted
+      const sortedTracks = [...tracks].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { numeric: true })
+      );
+
+      playQueue = sortedTracks;
       queueIndex = index;
       playFromQueue(queueIndex);
     });
