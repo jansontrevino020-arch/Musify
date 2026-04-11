@@ -7,8 +7,30 @@ if ("serviceWorker" in navigator) {
 }
 
 const DB_NAME = "musify-db";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 let db;
+
+// ⭐ Artist map loaded from artists.txt
+let ARTIST_MAP = {};
+
+function loadArtistMap(text) {
+  ARTIST_MAP = {};
+  const lines = text.split("\n");
+
+  lines.forEach(line => {
+    if (!line.includes(":")) return;
+    const [album, artist] = line.split(":");
+    const albumName = album.trim();
+    const artistName = artist.trim();
+    if (albumName && artistName) {
+      ARTIST_MAP[albumName] = artistName;
+    }
+  });
+}
+
+function getArtist(albumName) {
+  return ARTIST_MAP[albumName] || "Unknown Artist";
+}
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -128,13 +150,6 @@ audio.addEventListener("ended", () => {
   }
 });
 
-function extractArtistFromAlbum(albumName) {
-  if (albumName.includes(" - ")) {
-    return albumName.split(" - ")[0];
-  }
-  return "Unknown Artist";
-}
-
 function renderLibrary(tracks) {
   const albums = {};
 
@@ -170,7 +185,7 @@ function renderLibrary(tracks) {
 
     const artist = document.createElement("div");
     artist.className = "album-artist";
-    artist.textContent = extractArtistFromAlbum(albumName);
+    artist.textContent = getArtist(albumName);
 
     card.addEventListener("click", () => {
       openAlbumView(albumName, albums[albumName]);
@@ -234,7 +249,7 @@ async function playFromQueue(index) {
 
   audio.play().then(() => {
     nowPlayingTitle.textContent = track.name;
-    nowPlayingArtist.textContent = extractArtistFromAlbum(track.album);
+    nowPlayingArtist.textContent = getArtist(track.album);
     playPauseBtn.disabled = false;
     playPauseBtn.textContent = "Pause";
   });
@@ -275,6 +290,13 @@ window.addEventListener("drop", async e => {
     if (entry.dir) continue;
 
     const lower = entry.name.toLowerCase();
+
+    // ⭐ artists.txt support
+    if (lower.endsWith("artists.txt")) {
+      const text = await entry.async("text");
+      loadArtistMap(text);
+      continue;
+    }
 
     if (
       lower.endsWith("cover.jpg") ||
