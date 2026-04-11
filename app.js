@@ -7,7 +7,7 @@ if ("serviceWorker" in navigator) {
 }
 
 const DB_NAME = "musify-db";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 let db;
 
 function openDB() {
@@ -78,7 +78,7 @@ function getCover(album) {
 
 const albumGrid = document.getElementById("albumGrid");
 const nowPlayingTitle = document.getElementById("nowPlayingTitle");
-const nowPlayingAlbum = document.getElementById("nowPlayingAlbum");
+const nowPlayingArtist = document.getElementById("nowPlayingArtist");
 const nowPlayingCover = document.getElementById("nowPlayingCover");
 const playPauseBtn = document.getElementById("playPauseBtn");
 
@@ -128,6 +128,13 @@ audio.addEventListener("ended", () => {
   }
 });
 
+function extractArtistFromAlbum(albumName) {
+  if (albumName.includes(" - ")) {
+    return albumName.split(" - ")[0];
+  }
+  return "Unknown Artist";
+}
+
 function renderLibrary(tracks) {
   const albums = {};
 
@@ -136,7 +143,6 @@ function renderLibrary(tracks) {
     albums[t.album].push(t);
   });
 
-  // ⭐ Sort tracks inside each album globally
   Object.keys(albums).forEach(albumName => {
     albums[albumName].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true })
@@ -164,9 +170,8 @@ function renderLibrary(tracks) {
 
     const artist = document.createElement("div");
     artist.className = "album-artist";
-    artist.textContent = "Local Files";
+    artist.textContent = extractArtistFromAlbum(albumName);
 
-    // ⭐ Make the entire card clickable
     card.addEventListener("click", () => {
       openAlbumView(albumName, albums[albumName]);
     });
@@ -183,7 +188,6 @@ async function openAlbumView(albumName, tracks) {
   albumViewTitle.textContent = albumName;
   albumViewTrackList.innerHTML = "";
 
-  // ⭐ Sort tracks by filename (01, 02, 03...)
   tracks.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
 
   tracks.forEach((track, index) => {
@@ -192,7 +196,6 @@ async function openAlbumView(albumName, tracks) {
     li.textContent = track.name;
 
     li.addEventListener("click", () => {
-      // ⭐ Queue also sorted
       const sortedTracks = [...tracks].sort((a, b) =>
         a.name.localeCompare(b.name, undefined, { numeric: true })
       );
@@ -231,7 +234,7 @@ async function playFromQueue(index) {
 
   audio.play().then(() => {
     nowPlayingTitle.textContent = track.name;
-    nowPlayingAlbum.textContent = track.album;
+    nowPlayingArtist.textContent = extractArtistFromAlbum(track.album);
     playPauseBtn.disabled = false;
     playPauseBtn.textContent = "Pause";
   });
