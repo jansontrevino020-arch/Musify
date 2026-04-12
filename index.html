@@ -1,49 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
   <title>Musify</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+  <div id="app">
+    <header>
+      <h1>Musify</h1>
+    </header>
 
-  <!-- HEADER -->
-  <header class="header">
-    <h1 class="logo">Musify</h1>
-  </header>
+    <main>
+      <section id="importSection">
+        <div id="dropzone">Drop MusicVault.zip here or click to select</div>
 
-  <!-- MAIN CONTENT -->
-  <main>
+        <div id="importProgress">
+          <div id="importBar"></div>
+        </div>
+        <div id="importLabel"></div>
+      </section>
 
-    <!-- ALBUM GRID -->
-    <section id="albumsTab" class="albums-tab">
-      <h2 class="section-title">Your Library</h2>
-      <div id="albumGrid" class="album-grid"></div>
-    </section>
+      <section id="albumsSection">
+        <h2>Albums</h2>
+        <ul id="albumList"></ul>
+      </section>
 
-    <!-- ALBUM VIEW -->
-    <section id="albumViewTab" class="album-view">
-      <button id="backToAlbumsBtn" class="back-btn">← Back</button>
-      <h2 id="albumViewTitle" class="album-view-title"></h2>
-      <ul id="albumViewTrackList" class="track-list"></ul>
-    </section>
+      <section id="tracksSection">
+        <h2 id="tracksTitle">Tracks</h2>
+        <ul id="trackList"></ul>
+      </section>
+    </main>
 
-  </main>
-
-  <!-- NOW PLAYING BAR -->
-  <footer class="now-playing">
-    <img id="nowPlayingCover" class="np-cover" />
-    <div class="np-info">
-      <div id="nowPlayingTitle" class="np-title">No song playing</div>
-      <div id="nowPlayingArtist" class="np-album"></div>
-    </div>
-    <button id="playPauseBtn" class="np-btn">Play</button>
-  </footer>
-
-  <div id="dropZone" class="drop-zone">Drop ZIP to import</div>
+    <footer id="playerBar">
+      <div id="nowPlaying">
+        <span id="nowPlayingTitle">Nothing playing</span>
+      </div>
+      <div id="playerControls">
+        <button id="prevBtn">⏮</button>
+        <button id="playPauseBtn">▶</button>
+        <button id="nextBtn">⏭</button>
+      </div>
+      <audio id="audioPlayer"></audio>
+    </footer>
+  </div>
 
   <script src="jszip.min.js"></script>
   <script src="app.js"></script>
