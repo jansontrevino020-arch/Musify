@@ -1,339 +1,275 @@
-if (navigator.storage && navigator.storage.persist) {
-  navigator.storage.persist();
-}
-
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js");
-}
-
-const DB_NAME = "musify-db";
-const DB_VERSION = 4;
+// ---------- IndexedDB SETUP ----------
 let db;
+const DB_NAME = "musifyDB";
+const DB_VERSION = 1;
+const TRACK_STORE = "tracks";
+const COVER_STORE = "covers";
 
-// ⭐ Artist map loaded from artists.txt
-let ARTIST_MAP = {};
+const openRequest = indexedDB.open(DB_NAME, DB_VERSION);
 
-function loadArtistMap(text) {
-  ARTIST_MAP = {};
-  const lines = text.split("\n");
+openRequest.onupgradeneeded = (e) => {
+  const db = e.target.result;
+  if (!db.objectStoreNames.contains(TRACK_STORE)) {
+    const store = db.createObjectStore(TRACK_STORE, { keyPath: "id", autoIncrement: true });
+    store.createIndex("album", "album", { unique: false });
+  }
+  if (!db.objectStoreNames.contains(COVER_STORE)) {
+    db.createObjectStore(COVER_STORE, { keyPath: "album" });
+  }
+};
 
-  lines.forEach(line => {
-    if (!line.includes(":")) return;
-    const [album, artist] = line.split(":");
-    const albumName = album.trim();
-    const artistName = artist.trim();
-    if (albumName && artistName) {
-      ARTIST_MAP[albumName] = artistName;
-    }
+openRequest.onsuccess = (e) => {
+  db = e.target.result;
+  loadAlbums();
+};
+
+openRequest.onerror = () => {
+  console.error("Failed to open IndexedDB");
+};
+
+function saveTrackToIndexedDB(trackObj) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([TRACK_STORE], "readwrite");
+    const store = tx.objectStore(TRACK_STORE);
+    store.add(trackObj);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
   });
 }
 
-function getArtist(albumName) {
-  return ARTIST_MAP[albumName] || "Unknown Artist";
-}
-
-function openDB() {
+function saveCoverToIndexedDB(album, blob) {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-
-    req.onupgradeneeded = event => {
-      const db = event.target.result;
-
-      if (!db.objectStoreNames.contains("tracks")) {
-        const store = db.createObjectStore("tracks", { keyPath: "id", autoIncrement: true });
-        store.createIndex("album", "album", { unique: false });
-      }
-
-      if (!db.objectStoreNames.contains("covers")) {
-        db.createObjectStore("covers", { keyPath: "album" });
-      }
-    };
-
-    req.onsuccess = event => {
-      db = event.target.result;
-      resolve(db);
-    };
-
-    req.onerror = () => reject(req.error);
+    const tx = db.transaction([COVER_STORE], "readwrite");
+    const store = tx.objectStore(COVER_STORE);
+    store.put({ album, blob });
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
   });
 }
 
-function addTrack(track) {
+function getTracksByAlbum(album) {
   return new Promise((resolve, reject) => {
-    const tx = db.transaction("tracks", "readwrite");
-    const store = tx.objectStore("tracks");
-    const req = store.add(track);
+    const tx = db.transaction([TRACK_STORE], "readonly");
+    const store = tx.objectStore(TRACK_STORE);
+    const index = store.index("album");
+    const req = index.getAll(album);
     req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onerror = (e) => reject(e);
   });
 }
 
-function getAllTracks() {
+function getAllAlbums() {
   return new Promise((resolve, reject) => {
-    const tx = db.transaction("tracks", "readonly");
-    const store = tx.objectStore("tracks");
+    const tx = db.transaction([TRACK_STORE], "readonly");
+    const store = tx.objectStore(TRACK_STORE);
     const req = store.getAll();
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      const albums = [...new Set(req.result.map(t => t.album))];
+      resolve(albums);
+    };
+    req.onerror = (e) => reject(e);
   });
 }
 
-function saveCover(album, blob) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("covers", "readwrite");
-    const store = tx.objectStore("covers");
-    const req = store.put({ album, blob });
-    req.onsuccess = () => resolve();
-    req.onerror = () => reject(req.error);
-  });
+// ---------- CLEAN TRACK NAME ----------
+function cleanTrackName(filename) {
+  return filename
+    .replace(/^.*[\\/]/, "")
+    .replace(/\.[^/.]+$/, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\((feat|ft|explicit|clean|remastered)[^)]*\)/gi, "")
+    .replace(/\[(feat|ft|explicit|clean|remastered)[^\]]*\]/gi, "")
+    .replace(/\bfeat\.?.*/i, "")
+    .replace(/\bft\.?.*/i, "")
+    .replace(/\([^)]*\)/g, "")
+    .replace(/\[[^\]]*\]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, c => c.toUpperCase());
 }
 
-function getCover(album) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction("covers", "readonly");
-    const store = tx.objectStore("covers");
-    const req = store.get(album);
-    req.onsuccess = () => resolve(req.result ? req.result.blob : null);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-const albumGrid = document.getElementById("albumGrid");
+// ---------- UI ELEMENTS ----------
+const dropzone = document.getElementById("dropzone");
+const importProgress = document.getElementById("importProgress");
+const importBar = document.getElementById("importBar");
+const importLabel = document.getElementById("importLabel");
+const albumList = document.getElementById("albumList");
+const trackList = document.getElementById("trackList");
+const tracksTitle = document.getElementById("tracksTitle");
+const audioPlayer = document.getElementById("audioPlayer");
 const nowPlayingTitle = document.getElementById("nowPlayingTitle");
-const nowPlayingArtist = document.getElementById("nowPlayingArtist");
-const nowPlayingCover = document.getElementById("nowPlayingCover");
 const playPauseBtn = document.getElementById("playPauseBtn");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
 
-const albumsTab = document.getElementById("albumsTab");
-const albumViewTab = document.getElementById("albumViewTab");
-const backToAlbumsBtn = document.getElementById("backToAlbumsBtn");
-const albumViewTitle = document.getElementById("albumViewTitle");
-const albumViewTrackList = document.getElementById("albumViewTrackList");
+let currentAlbum = null;
+let currentTracks = [];
+let currentIndex = -1;
 
-function showAlbumsTab() {
-  albumsTab.style.display = "block";
-  albumViewTab.style.display = "none";
-}
-
-function showAlbumViewTab() {
-  albumsTab.style.display = "none";
-  albumViewTab.style.display = "block";
-}
-
-backToAlbumsBtn.addEventListener("click", () => {
-  showAlbumsTab();
-  window.scrollTo({ top: 0, behavior: "instant" });
-});
-
-const audio = new Audio();
-let currentObjectUrl = null;
-
-let playQueue = [];
-let queueIndex = -1;
-
-playPauseBtn.addEventListener("click", () => {
-  if (audio.paused) {
-    audio.play();
-    playPauseBtn.textContent = "Pause";
-  } else {
-    audio.pause();
-    playPauseBtn.textContent = "Play";
-  }
-});
-
-audio.addEventListener("ended", () => {
-  const nextIndex = queueIndex + 1;
-  if (nextIndex < playQueue.length) {
-    playFromQueue(nextIndex);
-  } else {
-    playPauseBtn.textContent = "Play";
-  }
-});
-
-function renderLibrary(tracks) {
-  const albums = {};
-
-  tracks.forEach(t => {
-    if (!albums[t.album]) albums[t.album] = [];
-    albums[t.album].push(t);
-  });
-
-  Object.keys(albums).forEach(albumName => {
-    albums[albumName].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { numeric: true })
-    );
-  });
-
-  albumGrid.innerHTML = "";
-
-  Object.keys(albums).forEach(albumName => {
-    const card = document.createElement("div");
-    card.className = "album-card";
-
-    const coverImg = document.createElement("img");
-    coverImg.className = "album-cover";
-
-    getCover(albumName).then(blob => {
-      if (blob) {
-        coverImg.src = URL.createObjectURL(blob);
-      }
-    });
-
-    const title = document.createElement("div");
-    title.className = "album-title";
-    title.textContent = albumName;
-
-    const artist = document.createElement("div");
-    artist.className = "album-artist";
-    artist.textContent = getArtist(albumName);
-
-    card.addEventListener("click", () => {
-      openAlbumView(albumName, albums[albumName]);
-    });
-
-    card.appendChild(coverImg);
-    card.appendChild(title);
-    card.appendChild(artist);
-
-    albumGrid.appendChild(card);
-  });
-}
-
-async function openAlbumView(albumName, tracks) {
-  albumViewTitle.textContent = albumName;
-  albumViewTrackList.innerHTML = "";
-
-  tracks.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-
-  tracks.forEach((track, index) => {
-    const li = document.createElement("li");
-    li.className = "track-item";
-    li.textContent = track.name;
-
-    li.addEventListener("click", () => {
-      const sortedTracks = [...tracks].sort((a, b) =>
-        a.name.localeCompare(b.name, undefined, { numeric: true })
-      );
-
-      playQueue = sortedTracks;
-      queueIndex = index;
-      playFromQueue(queueIndex);
-    });
-
-    albumViewTrackList.appendChild(li);
-  });
-
-  showAlbumViewTab();
-  window.scrollTo({ top: 0, behavior: "instant" });
-}
-
-async function playFromQueue(index) {
-  if (index < 0 || index >= playQueue.length) return;
-
-  queueIndex = index;
-  const track = playQueue[index];
-
-  if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
-
-  const url = URL.createObjectURL(track.blob);
-  currentObjectUrl = url;
-
-  audio.src = url;
-
-  const coverBlob = await getCover(track.album);
-  if (coverBlob) {
-    nowPlayingCover.src = URL.createObjectURL(coverBlob);
-  } else {
-    nowPlayingCover.src = "";
-  }
-
-  audio.play().then(() => {
-    nowPlayingTitle.textContent = track.name;
-    nowPlayingArtist.textContent = getArtist(track.album);
-    playPauseBtn.disabled = false;
-    playPauseBtn.textContent = "Pause";
-  });
-}
-
-const dropZone = document.getElementById("dropZone");
-
-window.addEventListener("dragenter", e => {
-  e.preventDefault();
-  dropZone.style.display = "flex";
-});
-
-window.addEventListener("dragover", e => {
-  e.preventDefault();
-});
-
-window.addEventListener("dragleave", e => {
-  if (e.target === document.body) {
-    dropZone.style.display = "none";
-  }
-});
-
-window.addEventListener("drop", async e => {
-  e.preventDefault();
-  dropZone.style.display = "none";
-
-  const file = e.dataTransfer.files[0];
-  if (!file || !file.name.toLowerCase().endsWith(".zip")) {
-    alert("Please drop a ZIP file.");
-    return;
-  }
-
+// ---------- ZIP IMPORT WITH PROGRESS ----------
+async function handleZipImport(file) {
   const zip = await JSZip.loadAsync(file);
   const audioExtensions = [".mp3", ".wav", ".ogg", ".flac", ".m4a"];
 
+  // Count audio files
+  let totalTracks = 0;
+  for (const path in zip.files) {
+    const lower = path.toLowerCase();
+    if (audioExtensions.some(ext => lower.endsWith(ext))) {
+      totalTracks++;
+    }
+  }
+  if (totalTracks === 0) return;
+
+  let processedTracks = 0;
+
+  // Show progress UI
+  importProgress.style.display = "block";
+  importLabel.style.display = "block";
+  importBar.style.width = "0%";
+  importLabel.textContent = `Importing… 0% (0/${totalTracks} tracks)`;
+
   for (const path in zip.files) {
     const entry = zip.files[path];
-    if (entry.dir) continue;
+    const lower = path.toLowerCase();
 
-    const lower = entry.name.toLowerCase();
+    // Audio files
+    if (audioExtensions.some(ext => lower.endsWith(ext))) {
+      const fileData = await entry.async("blob");
 
-    // ⭐ artists.txt support
-    if (lower.endsWith("artists.txt")) {
-      const text = await entry.async("text");
-      loadArtistMap(text);
-      continue;
+      const trackObj = {
+        name: cleanTrackName(entry.name),
+        album: "MusicVault",
+        blob: fileData
+      };
+
+      await saveTrackToIndexedDB(trackObj);
+
+      processedTracks++;
+      const percent = Math.floor((processedTracks / totalTracks) * 100);
+      importBar.style.width = percent + "%";
+      importLabel.textContent =
+        `Importing… ${percent}% (${processedTracks}/${totalTracks} tracks)`;
     }
 
-    if (
-      lower.endsWith("cover.jpg") ||
-      lower.endsWith("cover.png") ||
-      lower.endsWith("cover.webp")
-    ) {
-      const parts = entry.name.split("/");
-      const albumName = parts.length > 1 ? parts[parts.length - 2] : "Unknown Album";
-
+    // Cover image
+    if (/\b(cover|folder|album)\.(jpg|png|webp)$/i.test(lower)) {
       const coverBlob = await entry.async("blob");
-      await saveCover(albumName, coverBlob);
-      continue;
+      await saveCoverToIndexedDB("MusicVault", coverBlob);
     }
-
-    if (!audioExtensions.some(ext => lower.endsWith(ext))) continue;
-
-    const parts = entry.name.split("/");
-    const albumName = parts.length > 1 ? parts[parts.length - 2] : "Unknown Album";
-    const trackName = parts[parts.length - 1];
-
-    const fileData = await entry.async("blob");
-
-    const trackObj = {
-      name: trackName,
-      album: albumName,
-      blob: fileData
-    };
-
-    await addTrack(trackObj);
   }
 
-  const allTracks = await getAllTracks();
-  renderLibrary(allTracks);
+  importLabel.textContent = "Import complete!";
+  setTimeout(() => {
+    importProgress.style.display = "none";
+    importLabel.style.display = "none";
+  }, 1500);
+
+  loadAlbums();
+}
+
+// ---------- DROPZONE EVENTS ----------
+dropzone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropzone.classList.add("dragover");
 });
 
-(async () => {
-  await openDB();
-  const tracks = await getAllTracks();
-  renderLibrary(tracks);
-})();
+dropzone.addEventListener("dragleave", (e) => {
+  e.preventDefault();
+  dropzone.classList.remove("dragover");
+});
+
+dropzone.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  dropzone.classList.remove("dragover");
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.toLowerCase().endsWith(".zip")) {
+    await handleZipImport(file);
+  }
+});
+
+dropzone.addEventListener("click", () => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".zip";
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) await handleZipImport(file);
+  };
+  input.click();
+});
+
+// ---------- LOAD & RENDER ----------
+async function loadAlbums() {
+  if (!db) return;
+  const albums = await getAllAlbums();
+  albumList.innerHTML = "";
+  albums.forEach(album => {
+    const li = document.createElement("li");
+    li.textContent = album;
+    li.addEventListener("click", () => selectAlbum(album));
+    albumList.appendChild(li);
+  });
+}
+
+async function selectAlbum(album) {
+  currentAlbum = album;
+  tracksTitle.textContent = `Tracks — ${album}`;
+  currentTracks = await getTracksByAlbum(album);
+  currentTracks.sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true })
+  );
+  renderTracks();
+}
+
+function renderTracks() {
+  trackList.innerHTML = "";
+  currentTracks.forEach((track, index) => {
+    const li = document.createElement("li");
+    li.textContent = track.name;
+    li.addEventListener("click", () => playTrack(index));
+    trackList.appendChild(li);
+  });
+}
+
+// ---------- PLAYER ----------
+function playTrack(index) {
+  if (index < 0 || index >= currentTracks.length) return;
+  currentIndex = index;
+  const track = currentTracks[index];
+
+  const blob = track.blob;
+  const url = URL.createObjectURL(blob);
+  audioPlayer.src = url;
+  audioPlayer.play();
+  nowPlayingTitle.textContent = track.name;
+  playPauseBtn.textContent = "⏸";
+}
+
+playPauseBtn.addEventListener("click", () => {
+  if (!audioPlayer.src) return;
+  if (audioPlayer.paused) {
+    audioPlayer.play();
+    playPauseBtn.textContent = "⏸";
+  } else {
+    audioPlayer.pause();
+    playPauseBtn.textContent = "▶";
+  }
+});
+
+prevBtn.addEventListener("click", () => {
+  if (currentIndex > 0) playTrack(currentIndex - 1);
+});
+
+nextBtn.addEventListener("click", () => {
+  if (currentIndex < currentTracks.length - 1) playTrack(currentIndex + 1);
+});
+
+audioPlayer.addEventListener("ended", () => {
+  if (currentIndex < currentTracks.length - 1) {
+    playTrack(currentIndex + 1);
+  } else {
+    playPauseBtn.textContent = "▶";
+  }
+});
