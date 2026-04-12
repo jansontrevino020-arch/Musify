@@ -107,6 +107,26 @@ let currentAlbum = null;
 let currentTracks = [];
 let currentIndex = -1;
 
+// ---------- GLOBAL DRAG ANYWHERE ----------
+document.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropzone.classList.add("dragover");
+});
+
+document.addEventListener("dragleave", (e) => {
+  dropzone.classList.remove("dragover");
+});
+
+document.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropzone.classList.remove("dragover");
+
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.toLowerCase().endsWith(".zip")) {
+    handleZipImport(file);
+  }
+});
+
 // ---------- ZIP IMPORT WITH PROGRESS ----------
 async function handleZipImport(file) {
   const zip = await JSZip.loadAsync(file);
@@ -169,26 +189,7 @@ async function handleZipImport(file) {
   loadAlbums();
 }
 
-// ---------- DROPZONE EVENTS ----------
-dropzone.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  dropzone.classList.add("dragover");
-});
-
-dropzone.addEventListener("dragleave", (e) => {
-  e.preventDefault();
-  dropzone.classList.remove("dragover");
-});
-
-dropzone.addEventListener("drop", async (e) => {
-  e.preventDefault();
-  dropzone.classList.remove("dragover");
-  const file = e.dataTransfer.files[0];
-  if (file && file.name.toLowerCase().endsWith(".zip")) {
-    await handleZipImport(file);
-  }
-});
-
+// ---------- DROPZONE CLICK ----------
 dropzone.addEventListener("click", () => {
   const input = document.createElement("input");
   input.type = "file";
