@@ -130,9 +130,34 @@ const playPauseBtn = document.getElementById("playPauseBtn");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 
+// full-screen album view elements
+const albumView = document.getElementById("albumView");
+const backButton = document.getElementById("backButton");
+const albumViewCover = document.getElementById("albumViewCover");
+const albumViewTitle = document.getElementById("albumViewTitle");
+const albumViewTrackList = document.getElementById("albumViewTrackList");
+const importSection = document.getElementById("importSection");
+const albumsSection = document.getElementById("albumsSection");
+const tracksSection = document.getElementById("tracksSection");
+
 let currentAlbum = null;
 let currentTracks = [];
 let currentIndex = -1;
+
+// ---------- VIEW SWITCHING ----------
+function showAlbumView() {
+  importSection.classList.add("hidden");
+  albumsSection.classList.add("hidden");
+  tracksSection.classList.add("hidden");
+  albumView.classList.remove("hidden");
+}
+
+function hideAlbumView() {
+  albumView.classList.add("hidden");
+  importSection.classList.remove("hidden");
+  albumsSection.classList.remove("hidden");
+  tracksSection.classList.remove("hidden");
+}
 
 // ---------- FULL-PAGE DRAG & DROP ----------
 document.addEventListener("dragover", (e) => {
@@ -272,35 +297,46 @@ async function loadAlbums() {
   }
 }
 
-// ---------- LOAD TRACKS ----------
+// ---------- LOAD TRACKS (non-fullscreen list, still usable if you want) ----------
 async function selectAlbum(album) {
   currentAlbum = album;
-  tracksTitle.textContent = `Tracks — ${album}`;
-  currentTracks = await getTracksByAlbum(album);
-  currentTracks.sort((a, b) =>
+
+  const coverURL = await getCoverFromIndexedDB(album);
+  const tracks = await getTracksByAlbum(album);
+
+  albumViewCover.src = coverURL || "default-cover.png";
+  albumViewTitle.textContent = album;
+
+  albumViewTrackList.innerHTML = "";
+
+  tracks.sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { numeric: true })
   );
-  renderTracks();
-}
 
-function renderTracks() {
-  trackList.innerHTML = "";
-  currentTracks.forEach((track, index) => {
+  tracks.forEach((track, index) => {
     const li = document.createElement("li");
     li.textContent = track.name;
-    li.addEventListener("click", () => playTrack(index));
-    trackList.appendChild(li);
+    li.addEventListener("click", () => playTrack(index, tracks));
+    albumViewTrackList.appendChild(li);
   });
+
+  showAlbumView();
 }
 
+// ---------- BACK BUTTON ----------
+backButton.addEventListener("click", () => {
+  hideAlbumView();
+});
+
 // ---------- PLAYER ----------
-function playTrack(index) {
+function playTrack(index, trackArray = currentTracks) {
+  currentTracks = trackArray;
   if (index < 0 || index >= currentTracks.length) return;
+
   currentIndex = index;
   const track = currentTracks[index];
 
-  const blob = track.blob;
-  const url = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(track.blob);
   audioPlayer.src = url;
   audioPlayer.play();
   nowPlayingTitle.textContent = track.name;
