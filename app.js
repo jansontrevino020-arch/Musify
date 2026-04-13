@@ -89,6 +89,15 @@ function cleanTrackName(filename) {
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
+// ---------- ALBUM NAME FROM PATH ----------
+function getAlbumNameFromPath(path) {
+  const parts = path.split("/");
+  if (parts.length > 1) {
+    return parts[parts.length - 2];
+  }
+  return "Unknown Album";
+}
+
 // ---------- UI ELEMENTS ----------
 const dropzone = document.getElementById("dropzone");
 const importProgress = document.getElementById("importProgress");
@@ -127,7 +136,7 @@ document.addEventListener("drop", (e) => {
   }
 });
 
-// ---------- ZIP IMPORT WITH PROGRESS + DUPLICATE FILTER ----------
+// ---------- ZIP IMPORT WITH PROGRESS + ALBUM DETECTION + DUPLICATE FILTER ----------
 async function handleZipImport(file) {
   const zip = await JSZip.loadAsync(file);
   const audioExtensions = [".mp3", ".wav", ".ogg", ".flac", ".m4a"];
@@ -169,9 +178,11 @@ async function handleZipImport(file) {
     if (audioExtensions.some(ext => lower.endsWith(ext))) {
       const fileData = await entry.async("blob");
 
+      const albumName = getAlbumNameFromPath(path);
+
       const trackObj = {
         name: cleanTrackName(entry.name),
-        album: "MusicVault",
+        album: albumName,
         blob: fileData
       };
 
@@ -187,7 +198,8 @@ async function handleZipImport(file) {
     // COVER IMAGE
     if (/\b(cover|folder|album)\.(jpg|png|webp)$/i.test(lower)) {
       const coverBlob = await entry.async("blob");
-      await saveCoverToIndexedDB("MusicVault", coverBlob);
+      const albumName = getAlbumNameFromPath(path);
+      await saveCoverToIndexedDB(albumName, coverBlob);
     }
   }
 
