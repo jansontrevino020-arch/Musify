@@ -47,6 +47,24 @@ function saveCoverToIndexedDB(album, blob) {
   });
 }
 
+function getCoverFromIndexedDB(album) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([COVER_STORE], "readonly");
+    const store = tx.objectStore(COVER_STORE);
+    const req = store.get(album);
+
+    req.onsuccess = () => {
+      if (req.result && req.result.blob) {
+        resolve(URL.createObjectURL(req.result.blob));
+      } else {
+        resolve(null);
+      }
+    };
+
+    req.onerror = (e) => reject(e);
+  });
+}
+
 function getTracksByAlbum(album) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([TRACK_STORE], "readonly");
@@ -103,7 +121,7 @@ const dropzone = document.getElementById("dropzone");
 const importProgress = document.getElementById("importProgress");
 const importBar = document.getElementById("importBar");
 const importLabel = document.getElementById("importLabel");
-const albumList = document.getElementById("albumList");
+const albumGrid = document.getElementById("albumGrid");
 const trackList = document.getElementById("trackList");
 const tracksTitle = document.getElementById("tracksTitle");
 const audioPlayer = document.getElementById("audioPlayer");
@@ -224,19 +242,37 @@ dropzone.addEventListener("click", () => {
   input.click();
 });
 
-// ---------- LOAD & RENDER ----------
+// ---------- LOAD & RENDER ALBUM GRID ----------
 async function loadAlbums() {
   if (!db) return;
+
   const albums = await getAllAlbums();
-  albumList.innerHTML = "";
-  albums.forEach(album => {
-    const li = document.createElement("li");
-    li.textContent = album;
-    li.addEventListener("click", () => selectAlbum(album));
-    albumList.appendChild(li);
-  });
+  albumGrid.innerHTML = "";
+
+  for (const album of albums) {
+    const coverURL = await getCoverFromIndexedDB(album);
+
+    const card = document.createElement("div");
+    card.className = "album-card";
+
+    const img = document.createElement("img");
+    img.className = "album-cover";
+    img.src = coverURL || "default-cover.png";
+
+    const title = document.createElement("div");
+    title.className = "album-title";
+    title.textContent = album;
+
+    card.appendChild(img);
+    card.appendChild(title);
+
+    card.addEventListener("click", () => selectAlbum(album));
+
+    albumGrid.appendChild(card);
+  }
 }
 
+// ---------- LOAD TRACKS ----------
 async function selectAlbum(album) {
   currentAlbum = album;
   tracksTitle.textContent = `Tracks — ${album}`;
