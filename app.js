@@ -78,11 +78,11 @@ function cleanTrackName(filename) {
     .replace(/\.[^/.]+$/, "")
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
-    .replace(/\((feat|ft|explicit|clean|remastered)[^)]*\)/gi, "")
+    .replace(/`\((feat|ft|explicit|clean|remastered)[^)]*\)`/gi, "")
     .replace(/\[(feat|ft|explicit|clean|remastered)[^\]]*\]/gi, "")
     .replace(/\bfeat\.?.*/i, "")
     .replace(/\bft\.?.*/i, "")
-    .replace(/\([^)]*\)/g, "")
+    .replace(/`\([^)]*\)`/g, "")
     .replace(/\[[^\]]*\]/g, "")
     .replace(/\s+/g, " ")
     .trim()
@@ -107,7 +107,7 @@ let currentAlbum = null;
 let currentTracks = [];
 let currentIndex = -1;
 
-// ---------- GLOBAL DRAG ANYWHERE ----------
+// ---------- FULL-PAGE DRAG & DROP (OLD SYSTEM) ----------
 document.addEventListener("dragover", (e) => {
   e.preventDefault();
   dropzone.classList.add("dragover");
