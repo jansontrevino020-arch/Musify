@@ -107,7 +107,7 @@ let currentAlbum = null;
 let currentTracks = [];
 let currentIndex = -1;
 
-// ---------- FULL-PAGE DRAG & DROP (OLD SYSTEM) ----------
+// ---------- FULL-PAGE DRAG & DROP ----------
 document.addEventListener("dragover", (e) => {
   e.preventDefault();
   dropzone.classList.add("dragover");
@@ -127,15 +127,21 @@ document.addEventListener("drop", (e) => {
   }
 });
 
-// ---------- ZIP IMPORT WITH PROGRESS ----------
+// ---------- ZIP IMPORT WITH PROGRESS + DUPLICATE FILTER ----------
 async function handleZipImport(file) {
   const zip = await JSZip.loadAsync(file);
   const audioExtensions = [".mp3", ".wav", ".ogg", ".flac", ".m4a"];
 
-  // Count audio files
+  // Count audio files (excluding junk)
   let totalTracks = 0;
   for (const path in zip.files) {
+    const entry = zip.files[path];
     const lower = path.toLowerCase();
+
+    if (entry.dir) continue;
+    if (path.startsWith("__MACOSX")) continue;
+    if (path.startsWith("._")) continue;
+
     if (audioExtensions.some(ext => lower.endsWith(ext))) {
       totalTracks++;
     }
@@ -154,7 +160,12 @@ async function handleZipImport(file) {
     const entry = zip.files[path];
     const lower = path.toLowerCase();
 
-    // Audio files
+    // Skip folders + macOS junk
+    if (entry.dir) continue;
+    if (path.startsWith("__MACOSX")) continue;
+    if (path.startsWith("._")) continue;
+
+    // AUDIO FILES
     if (audioExtensions.some(ext => lower.endsWith(ext))) {
       const fileData = await entry.async("blob");
 
@@ -173,7 +184,7 @@ async function handleZipImport(file) {
         `Importing… ${percent}% (${processedTracks}/${totalTracks} tracks)`;
     }
 
-    // Cover image
+    // COVER IMAGE
     if (/\b(cover|folder|album)\.(jpg|png|webp)$/i.test(lower)) {
       const coverBlob = await entry.async("blob");
       await saveCoverToIndexedDB("MusicVault", coverBlob);
