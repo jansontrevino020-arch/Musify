@@ -23,72 +23,6 @@ openRequest.onsuccess = (e) => {
   loadAlbums();
 };
 
-openRequest.onerror = () => {
-  console.error("Failed to open IndexedDB");
-};
-
-function saveTrackToIndexedDB(trackObj) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([TRACK_STORE], "readwrite");
-    const store = tx.objectStore(TRACK_STORE);
-    store.add(trackObj);
-    tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e);
-  });
-}
-
-function saveCoverToIndexedDB(album, blob) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([COVER_STORE], "readwrite");
-    const store = tx.objectStore(COVER_STORE);
-    store.put({ album, blob });
-    tx.oncomplete = () => resolve();
-    tx.onerror = (e) => reject(e);
-  });
-}
-
-function getCoverFromIndexedDB(album) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([COVER_STORE], "readonly");
-    const store = tx.objectStore(COVER_STORE);
-    const req = store.get(album);
-
-    req.onsuccess = () => {
-      if (req.result && req.result.blob) {
-        resolve(URL.createObjectURL(req.result.blob));
-      } else {
-        resolve(null);
-      }
-    };
-
-    req.onerror = (e) => reject(e);
-  });
-}
-
-function getTracksByAlbum(album) {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([TRACK_STORE], "readonly");
-    const store = tx.objectStore(TRACK_STORE);
-    const index = store.index("album");
-    const req = index.getAll(album);
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = (e) => reject(e);
-  });
-}
-
-function getAllAlbums() {
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction([TRACK_STORE], "readonly");
-    const store = tx.objectStore(TRACK_STORE);
-    const req = store.getAll();
-    req.onsuccess = () => {
-      const albums = [...new Set(req.result.map(t => t.album))];
-      resolve(albums);
-    };
-    req.onerror = (e) => reject(e);
-  });
-}
-
 // ---------- CLEAN TRACK NAME ----------
 function cleanTrackName(filename) {
   return filename
@@ -96,24 +30,65 @@ function cleanTrackName(filename) {
     .replace(/\.[^/.]+$/, "")
     .replace(/[_-]+/g, " ")
     .replace(/\s+/g, " ")
-    .replace(/`\((feat|ft|explicit|clean|remastered)[^)]*\)`/gi, "")
-    .replace(/\[(feat|ft|explicit|clean|remastered)[^\]]*\]/gi, "")
-    .replace(/\bfeat\.?.*/i, "")
-    .replace(/\bft\.?.*/i, "")
-    .replace(/`\([^)]*\)`/g, "")
-    .replace(/\[[^\]]*\]/g, "")
-    .replace(/\s+/g, " ")
     .trim()
     .replace(/\b\w/g, c => c.toUpperCase());
 }
 
-// ---------- ALBUM NAME FROM PATH ----------
+// ---------- ALBUM NAME FROM PATH (TOP-LEVEL FOLDER) ----------
 function getAlbumNameFromPath(path) {
-  const parts = path.split("/");
-  if (parts.length > 1) {
-    return parts[parts.length - 2];
-  }
-  return "Unknown Album";
+  const parts = path.split("/").filter(p => p.length > 0);
+  return parts.length >= 2 ? parts[1] : "Unknown Album";
+}
+
+// ---------- COVER + TRACK STORAGE ----------
+function saveTrackToIndexedDB(trackObj) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([TRACK_STORE], "readwrite");
+    tx.objectStore(TRACK_STORE).add(trackObj);
+    tx.oncomplete = resolve;
+    tx.onerror = reject;
+  });
+}
+
+function saveCoverToIndexedDB(album, blob) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([COVER_STORE], "readwrite");
+    tx.objectStore(COVER_STORE).put({ album, blob });
+    tx.oncomplete = resolve;
+    tx.onerror = reject;
+  });
+}
+
+function getCoverFromIndexedDB(album) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([COVER_STORE], "readonly");
+    const req = tx.objectStore(COVER_STORE).get(album);
+
+    req.onsuccess = () => {
+      resolve(req.result?.blob ? URL.createObjectURL(req.result.blob) : null);
+    };
+    req.onerror = reject;
+  });
+}
+
+function getTracksByAlbum(album) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([TRACK_STORE], "readonly");
+    const req = tx.objectStore(TRACK_STORE).index("album").getAll(album);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = reject;
+  });
+}
+
+function getAllAlbums() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([TRACK_STORE], "readonly");
+    const req = tx.objectStore(TRACK_STORE).getAll();
+    req.onsuccess = () => {
+      resolve([...new Set(req.result.map(t => t.album))]);
+    };
+    req.onerror = reject;
+  });
 }
 
 // ---------- UI ELEMENTS ----------
@@ -121,26 +96,23 @@ const dropzone = document.getElementById("dropzone");
 const importProgress = document.getElementById("importProgress");
 const importBar = document.getElementById("importBar");
 const importLabel = document.getElementById("importLabel");
+
 const albumGrid = document.getElementById("albumGrid");
-const trackList = document.getElementById("trackList");
-const tracksTitle = document.getElementById("tracksTitle");
+const albumView = document.getElementById("albumView");
+const backButton = document.getElementById("backButton");
+const albumViewCover = document.getElementById("albumViewCover");
+const albumViewTitle = document.getElementById("albumViewTitle");
+const albumViewTrackList = document.getElementById("albumViewTrackList");
+
+const importSection = document.getElementById("importSection");
+const albumsSection = document.getElementById("albumsSection");
+
 const audioPlayer = document.getElementById("audioPlayer");
 const nowPlayingTitle = document.getElementById("nowPlayingTitle");
 const playPauseBtn = document.getElementById("playPauseBtn");
 const prevBtn = document.getElementById("prevBtn");
 const nextBtn = document.getElementById("nextBtn");
 
-// full-screen album view elements
-const albumView = document.getElementById("albumView");
-const backButton = document.getElementById("backButton");
-const albumViewCover = document.getElementById("albumViewCover");
-const albumViewTitle = document.getElementById("albumViewTitle");
-const albumViewTrackList = document.getElementById("albumViewTrackList");
-const importSection = document.getElementById("importSection");
-const albumsSection = document.getElementById("albumsSection");
-const tracksSection = document.getElementById("tracksSection");
-
-let currentAlbum = null;
 let currentTracks = [];
 let currentIndex = -1;
 
@@ -148,7 +120,6 @@ let currentIndex = -1;
 function showAlbumView() {
   importSection.classList.add("hidden");
   albumsSection.classList.add("hidden");
-  tracksSection.classList.add("hidden");
   albumView.classList.remove("hidden");
 }
 
@@ -156,93 +127,71 @@ function hideAlbumView() {
   albumView.classList.add("hidden");
   importSection.classList.remove("hidden");
   albumsSection.classList.remove("hidden");
-  tracksSection.classList.remove("hidden");
 }
 
-// ---------- FULL-PAGE DRAG & DROP ----------
-document.addEventListener("dragover", (e) => {
+// ---------- DRAG & DROP ----------
+document.addEventListener("dragover", e => {
   e.preventDefault();
   dropzone.classList.add("dragover");
 });
 
-document.addEventListener("dragleave", (e) => {
+document.addEventListener("dragleave", () => {
   dropzone.classList.remove("dragover");
 });
 
-document.addEventListener("drop", (e) => {
+document.addEventListener("drop", e => {
   e.preventDefault();
   dropzone.classList.remove("dragover");
 
   const file = e.dataTransfer.files[0];
-  if (file && file.name.toLowerCase().endsWith(".zip")) {
+  if (file?.name.toLowerCase().endsWith(".zip")) {
     handleZipImport(file);
   }
 });
 
-// ---------- ZIP IMPORT WITH PROGRESS + ALBUM DETECTION + DUPLICATE FILTER ----------
+// ---------- ZIP IMPORT ----------
 async function handleZipImport(file) {
   const zip = await JSZip.loadAsync(file);
-  const audioExtensions = [".mp3", ".wav", ".ogg", ".flac", ".m4a"];
+  const audioExt = [".mp3", ".wav", ".ogg", ".flac", ".m4a"];
 
-  // Count audio files (excluding junk)
-  let totalTracks = 0;
+  let total = 0;
   for (const path in zip.files) {
-    const entry = zip.files[path];
     const lower = path.toLowerCase();
-
-    if (entry.dir) continue;
-    if (path.startsWith("__MACOSX")) continue;
-    if (path.startsWith("._")) continue;
-
-    if (audioExtensions.some(ext => lower.endsWith(ext))) {
-      totalTracks++;
-    }
+    if (zip.files[path].dir) continue;
+    if (path.startsWith("__MACOSX") || path.startsWith("._")) continue;
+    if (audioExt.some(ext => lower.endsWith(ext))) total++;
   }
-  if (totalTracks === 0) return;
 
-  let processedTracks = 0;
-
-  // Show progress UI
+  let done = 0;
   importProgress.style.display = "block";
   importLabel.style.display = "block";
-  importBar.style.width = "0%";
-  importLabel.textContent = `Importing… 0% (0/${totalTracks} tracks)`;
 
   for (const path in zip.files) {
     const entry = zip.files[path];
     const lower = path.toLowerCase();
 
-    // Skip folders + macOS junk
     if (entry.dir) continue;
-    if (path.startsWith("__MACOSX")) continue;
-    if (path.startsWith("._")) continue;
+    if (path.startsWith("__MACOSX") || path.startsWith("._")) continue;
 
-    // AUDIO FILES
-    if (audioExtensions.some(ext => lower.endsWith(ext))) {
-      const fileData = await entry.async("blob");
+    const album = getAlbumNameFromPath(path);
 
-      const albumName = getAlbumNameFromPath(path);
-
-      const trackObj = {
+    if (audioExt.some(ext => lower.endsWith(ext))) {
+      const blob = await entry.async("blob");
+      await saveTrackToIndexedDB({
         name: cleanTrackName(entry.name),
-        album: albumName,
-        blob: fileData
-      };
+        album,
+        blob
+      });
 
-      await saveTrackToIndexedDB(trackObj);
-
-      processedTracks++;
-      const percent = Math.floor((processedTracks / totalTracks) * 100);
-      importBar.style.width = percent + "%";
-      importLabel.textContent =
-        `Importing… ${percent}% (${processedTracks}/${totalTracks} tracks)`;
+      done++;
+      const pct = Math.floor((done / total) * 100);
+      importBar.style.width = pct + "%";
+      importLabel.textContent = `Importing… ${pct}% (${done}/${total})`;
     }
 
-    // COVER IMAGE
     if (/\b(cover|folder|album)\.(jpg|png|webp)$/i.test(lower)) {
-      const coverBlob = await entry.async("blob");
-      const albumName = getAlbumNameFromPath(path);
-      await saveCoverToIndexedDB(albumName, coverBlob);
+      const blob = await entry.async("blob");
+      await saveCoverToIndexedDB(album, blob);
     }
   }
 
@@ -250,39 +199,34 @@ async function handleZipImport(file) {
   setTimeout(() => {
     importProgress.style.display = "none";
     importLabel.style.display = "none";
-  }, 1500);
+  }, 1200);
 
   loadAlbums();
 }
 
-// ---------- DROPZONE CLICK ----------
+// ---------- CLICK IMPORT ----------
 dropzone.addEventListener("click", () => {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = ".zip";
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (file) await handleZipImport(file);
-  };
+  input.onchange = e => handleZipImport(e.target.files[0]);
   input.click();
 });
 
-// ---------- LOAD & RENDER ALBUM GRID ----------
+// ---------- LOAD ALBUM GRID ----------
 async function loadAlbums() {
-  if (!db) return;
-
   const albums = await getAllAlbums();
   albumGrid.innerHTML = "";
 
   for (const album of albums) {
-    const coverURL = await getCoverFromIndexedDB(album);
+    const cover = await getCoverFromIndexedDB(album);
 
     const card = document.createElement("div");
     card.className = "album-card";
 
     const img = document.createElement("img");
     img.className = "album-cover";
-    img.src = coverURL || "default-cover.png";
+    img.src = cover || "default-cover.png";
 
     const title = document.createElement("div");
     title.className = "album-title";
@@ -291,20 +235,18 @@ async function loadAlbums() {
     card.appendChild(img);
     card.appendChild(title);
 
-    card.addEventListener("click", () => selectAlbum(album));
+    card.addEventListener("click", () => openAlbum(album));
 
     albumGrid.appendChild(card);
   }
 }
 
-// ---------- LOAD TRACKS (non-fullscreen list, still usable if you want) ----------
-async function selectAlbum(album) {
-  currentAlbum = album;
-
-  const coverURL = await getCoverFromIndexedDB(album);
+// ---------- OPEN ALBUM ----------
+async function openAlbum(album) {
+  const cover = await getCoverFromIndexedDB(album);
   const tracks = await getTracksByAlbum(album);
 
-  albumViewCover.src = coverURL || "default-cover.png";
+  albumViewCover.src = cover || "default-cover.png";
   albumViewTitle.textContent = album;
 
   albumViewTrackList.innerHTML = "";
@@ -313,32 +255,31 @@ async function selectAlbum(album) {
     a.name.localeCompare(b.name, undefined, { numeric: true })
   );
 
-  tracks.forEach((track, index) => {
+  tracks.forEach((track, i) => {
     const li = document.createElement("li");
     li.textContent = track.name;
-    li.addEventListener("click", () => playTrack(index, tracks));
+    li.addEventListener("click", () => playTrack(i, tracks));
     albumViewTrackList.appendChild(li);
   });
 
+  currentTracks = tracks;
   showAlbumView();
 }
 
 // ---------- BACK BUTTON ----------
-backButton.addEventListener("click", () => {
-  hideAlbumView();
-});
+backButton.addEventListener("click", hideAlbumView);
 
 // ---------- PLAYER ----------
-function playTrack(index, trackArray = currentTracks) {
-  currentTracks = trackArray;
-  if (index < 0 || index >= currentTracks.length) return;
-
+function playTrack(index, list = currentTracks) {
+  currentTracks = list;
   currentIndex = index;
-  const track = currentTracks[index];
 
+  const track = currentTracks[index];
   const url = URL.createObjectURL(track.blob);
+
   audioPlayer.src = url;
   audioPlayer.play();
+
   nowPlayingTitle.textContent = track.name;
   playPauseBtn.textContent = "⏸";
 }
