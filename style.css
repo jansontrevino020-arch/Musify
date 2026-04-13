@@ -73,6 +73,12 @@ ul {
   list-style: none;
 }
 
+/* Utility */
+
+.hidden {
+  display: none;
+}
+
 /* --- ALBUM GRID --- */
 
 #albumGrid {
@@ -113,7 +119,7 @@ ul {
   overflow: hidden;
 }
 
-/* --- TRACK LIST --- */
+/* --- TRACK LIST (non-fullscreen) --- */
 
 #trackList li {
   padding: 8px 10px;
@@ -124,6 +130,54 @@ ul {
 }
 
 #trackList li:hover {
+  background: #1b1b1b;
+}
+
+/* --- FULL-SCREEN ALBUM VIEW --- */
+
+#albumView {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #050509;
+  padding: 20px;
+  overflow-y: auto;
+  z-index: 999;
+}
+
+#backButton {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+#albumViewCover {
+  width: 100%;
+  height: 250px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 15px;
+}
+
+#albumViewTitle {
+  font-size: 22px;
+  margin-bottom: 15px;
+}
+
+#albumViewTrackList li {
+  padding: 10px;
+  background: #111;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
+#albumViewTrackList li:hover {
   background: #1b1b1b;
 }
 
